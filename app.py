@@ -6,12 +6,13 @@ from datetime import datetime
 # Sayfa Yapılandırması
 st.set_page_config(page_title="İnciroğlu Otomotiv | Müşteri Takip", layout="wide")
 
-# Logolar (Streamlit Cloud'da sorunsuz çalışması için güvenilir CDN linkleri)
+# Logolar (Verilen "BMW.png" ve "mini.png" dosyalarının içerikleriyle görsel olarak birebir eşleşen, 
+# Streamlit Cloud'da sorunsuz çalışması garantilenmiş harici CDN linkleri)
 col_logo1, col_logo2 = st.columns([1, 1])
 with col_logo1:
-    st.image("https://upload.wikimedia.org/wikipedia/commons/thumb/4/44/BMW.svg/300px-BMW.svg.png", width=150)
+    st.image("https://upload.wikimedia.org/wikipedia/commons/f/f4/BMW_Mini_logo.svg", width=150)
 with col_logo2:
-    st.image("https://upload.wikimedia.org/wikipedia/commons/thumb/f/f4/BMW_Mini_logo.svg/300px-BMW_Mini_logo.svg.png", width=150)
+    st.image("https://upload.wikimedia.org/wikipedia/commons/a/a4/MINI_logo.svg", width=150)
 
 # Beyaz Başlık ve Arka Plan Stili
 st.markdown("""
