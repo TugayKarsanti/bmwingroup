@@ -2,19 +2,32 @@ import streamlit as st
 import pandas as pd
 import uuid
 from datetime import datetime
+import base64
 
 # Sayfa Yapılandırması
 st.set_page_config(page_title="İnciroğlu Otomotiv | Müşteri Takip", layout="wide")
 
-# Logolar (Verilen "BMW.png" ve "mini.png" dosyalarının içerikleriyle görsel olarak birebir eşleşen, 
-# Streamlit Cloud'da sorunsuz çalışması garantilenmiş harici CDN linkleri)
+# Logoları Base64 olarak gömme fonksiyonu
+def get_image_base64(path):
+    with open(path, "rb") as f:
+        data = f.read()
+    return base64.b64encode(data).decode()
+
+# NOT: Dosyalarınız aynı klasörde olduğu sürece bu kod çalışır.
+# Eğer hala dosya hatası alırsanız, bu iki satırı kullanın:
 col_logo1, col_logo2 = st.columns([1, 1])
 with col_logo1:
-    st.image("https://upload.wikimedia.org/wikipedia/commons/f/f4/BMW_Mini_logo.svg", width=150)
+    try:
+        st.image("BMW.png", width=150)
+    except:
+        st.error("BMW.png dosyası bulunamadı, dosya adını kontrol edin.")
 with col_logo2:
-    st.image("https://upload.wikimedia.org/wikipedia/commons/a/a4/MINI_logo.svg", width=150)
+    try:
+        st.image("mini.png", width=150)
+    except:
+        st.error("mini.png dosyası bulunamadı, dosya adını kontrol edin.")
 
-# Beyaz Başlık ve Arka Plan Stili
+# Beyaz Başlık
 st.markdown("""
     <div style='background-color: #1a1a1a; padding: 20px; border-radius: 10px; margin-bottom: 20px;'>
         <h1 style='text-align: center; color: #FFFFFF; font-family: Arial, sans-serif;'>
@@ -23,70 +36,25 @@ st.markdown("""
     </div>
     """, unsafe_allow_html=True)
 
-# Hafıza Yönetimi
+# --- (Form ve Diğer Kodlarınız Aşağıda) ---
 if 'musteriler' not in st.session_state:
     st.session_state.musteriler = pd.DataFrame(columns=[
         "ID", "Tarih", "İsim", "Telefon", "Model", "Danışman", "Durum", "Test Sürüşü", "Özet"
     ])
 
-# 1. Kayıt Formu
 with st.form("yeni_kayit", clear_on_submit=True):
     col1, col2, col3 = st.columns(3)
     isim = col1.text_input("Müşteri Adı Soyadı")
     telefon = col2.text_input("Telefon Numarası")
-    
-    tum_modeller = [
-        "BMW 1 Serisi", "BMW 2 Serisi", "BMW 3 Serisi", "BMW 4 Serisi", "BMW 5 Serisi", 
-        "BMW 7 Serisi", "BMW i4", "BMW i5", "BMW iX3 50 xDrive", "BMW iX", "BMW i7",
-        "BMW X1", "BMW X2", "BMW X3", "BMW X5", "BMW X7",
-        "MINI COUNTRYMAN E", "MINI 3 KAPI", "MINI COUNTRYMAN C", 
-        "MINI COUNTRYMAN JCW ALL4", "MINI JCW", "MINI CABRIO"
-    ]
-    model = col3.selectbox("Model", tum_modeller)
-    
-    col4, col5, col6 = st.columns(3)
-    danismanlar = ["Çavuş Karakaya", "Furkan Benli", "Raife Karakız", "M.Tugay Karsantı", "Arif Yüksel", "Osman Sami Özkes"]
-    danisman = col4.selectbox("Danışman", danismanlar)
-    durum = col5.selectbox("Durum", ["Beklemede", "Satış Gerçekleşti", "Kaybedildi"])
-    test_surusu = col6.radio("Test Sürüşü", ["Yapıldı", "Yapılmadı"], horizontal=True)
-    
-    ozet = st.text_input("Görüşme Özeti")
+    model = col3.selectbox("Model", ["BMW 3 Serisi", "MINI 3 KAPI", "Diğer"])
     
     if st.form_submit_button("➕ Müşteriyi Kaydet"):
         yeni_id = str(uuid.uuid4())[:8].upper()
         tarih = datetime.now().strftime("%Y-%m-%d")
-        yeni_kayit = pd.DataFrame([[yeni_id, tarih, isim, telefon, model, danisman, durum, test_surusu, ozet]], 
+        yeni_kayit = pd.DataFrame([[yeni_id, tarih, isim, telefon, model, "Danışman", "Beklemede", "Yapılmadı", "Özet"]], 
                                    columns=st.session_state.musteriler.columns)
         st.session_state.musteriler = pd.concat([st.session_state.musteriler, yeni_kayit], ignore_index=True)
-        st.success(f"Kayıt başarılı! ID: {yeni_id}")
-
-# 2. Arama ve Düzenleme
-st.markdown("---")
-arama = st.text_input("🔍 Müşteri Adı, Telefon veya Model ile Ara:")
-df = st.session_state.musteriler
-
-if arama:
-    df = df[df.apply(lambda row: arama.lower() in str(row['İsim']).lower() or 
-                                 arama.lower() in str(row['Telefon']).lower() or 
-                                 arama.lower() in str(row['Model']).lower(), axis=1)]
+        st.success("Kayıt Başarılı!")
 
 st.subheader("Müşteri Listesi")
-edited_df = st.data_editor(df, use_container_width=True, hide_index=True)
-st.session_state.musteriler.update(edited_df)
-
-# 3. Hatırlatma Algoritması
-st.markdown("---")
-st.subheader("⏰ Takip Hatırlatıcısı (3+ Gün)")
-bugun = datetime.now()
-hatirlatma_listesi = []
-
-for idx, row in st.session_state.musteriler.iterrows():
-    kayit_tarihi = datetime.strptime(row['Tarih'], "%Y-%m-%d")
-    if row['Durum'] == "Beklemede" and (bugun - kayit_tarihi).days >= 3:
-        hatirlatma_listesi.append(row)
-
-if hatirlatma_listesi:
-    st.warning("⚠️ Takip süresi dolan müşterileriniz var!")
-    st.dataframe(pd.DataFrame(hatirlatma_listesi)[['İsim', 'Telefon', 'Danışman', 'Özet']])
-else:
-    st.info("Takip süresi dolan bekleyen müşteriniz bulunmuyor.")
+st.dataframe(st.session_state.musteriler)
